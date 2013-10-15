@@ -1,0 +1,21 @@
+<launch>
+  <param name="/use_sim_time" value="True" />
+
+  <arg name="path" default="$(env HOME)/Data/iti4_2_flur_raeume"/>
+  <arg name="data" default="iti_data_2013-02-17-10-27-07.bag"/>
+  <arg name="color_front" default="iti_front_color_2013-02-17-10-27-07.bag"/>
+  <arg name="depth_front" default="iti_front_depth_registered_2013-02-17-10-27-07.bag"/>
+
+  <node pkg="tf" type="static_transform_publisher" name="footprint_pub" output="screen" args="0 0 0 0 0 0 /base_footprint /base_link 10" />  
+  <node pkg="tf" type="static_transform_publisher" name="imu_pub" output="screen" args="0 0 0 0 0 0 /base_link /imu 10" />  
+  <node pkg="tf" type="static_transform_publisher" name="front_cam_pub" output="screen" args="0.1 -0.02 1.005 1.670796327 -0.03 1.650796327 /base_link /cameraFront_rgb_optical_frame 10" />
+
+  <node pkg="rosbag" type="play" name="iti_player" output="screen"
+    args="--clock -r 1.0 -s 0 $(arg path)/$(arg data) $(arg path)/$(arg color_front) $(arg path)/$(arg depth_front) --topics /odom /imu/data /cameraFront/rgb/camera_info /cameraFront/rgb/image_color /cameraFront/depth_registered/image /cameraFront/depth_registered/camera_info" >
+    <remap from="/cameraFront/depth_registered/image" to="/camera/depth_registered/image_raw" />
+    <remap from="/cameraFront/depth_registered/camera_info" to="/camera/depth_registered/camera_info" />
+    <remap from="/cameraFront/rgb/image_color" to="/camera/rgb/image_raw" />
+    <remap from="/cameraFront/rgb/camera_info" to="/camera/rgb/camera_info" />
+  </node>
+
+</launch>

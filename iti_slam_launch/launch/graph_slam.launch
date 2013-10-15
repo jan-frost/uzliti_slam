@@ -1,0 +1,20 @@
+<launch>
+
+  <rosparam file="$(find iti_slam_launch)/yaml/slam.yaml" command="load" />
+
+  <!-- Starts the robot pose EKF, which combined wheel odometry, IMU, and visual odometry, if available. -->
+  <include file="$(find iti_slam_launch)/launch/pose_ekf.launch" />
+
+  <!-- A node, which extracts a given type of feature from the Kinect images. -->
+  <include file="$(find feature_extraction)/launch/feature_extraction_service.launch" />
+
+  <!-- Main graph slam node. -->
+  <node pkg="graph_slam" type="graph_slam_node" name="graph_slam_node" output="screen" />
+
+  <!-- RVIZ visualization -->
+  <node pkg="rviz" type="rviz" name="rviz_graph_slam" args="-d $(find iti_slam_launch)/rviz/minimal.rviz" />
+
+  <!-- Visualization of the slam graph. -->
+  <node pkg="graph_slam_tools" type="graph_visualization_node.py" name="graph_visualization_node" output="screen" />
+
+</launch>

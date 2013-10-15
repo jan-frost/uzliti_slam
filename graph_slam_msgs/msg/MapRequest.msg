@@ -1,0 +1,3 @@
+int32 OCCUPANCY_GRID=1
+
+int32 type

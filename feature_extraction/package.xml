@@ -1,0 +1,55 @@
+<package>
+  <name>feature_extraction</name>
+  <version>0.1.0</version>
+  <description>
+    Implements feature extraction methods for one or more RGBD cameras.
+  </description>
+
+  <maintainer email="frost@iti.uni-luebeck.de">Jan Frost</maintainer>
+  <license>BSD</license>
+  <url type="website">http://ros.org/wiki/feature_extraction</url>
+  <author>Jan Frost</author>
+  <author>Helge Klüssendorff</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>roslib</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>graph_slam_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>pcl_ros</build_depend>
+  <build_depend>libpcl-all-dev</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+  <build_depend>image_geometry</build_depend>
+  <build_depend>nodelet</build_depend>
+  <build_depend>graph_slam_tools</build_depend>
+  <build_depend>cmake_modules</build_depend>
+
+  <run_depend>roslib</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>nav_msgs</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>graph_slam_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>pcl_ros</run_depend>
+  <run_depend>libpcl-all</run_depend>
+  <run_depend>eigen</run_depend>
+  <run_depend>dynamic_reconfigure</run_depend>
+  <run_depend>image_geometry</run_depend>
+  <run_depend>nodelet</run_depend>
+  <run_depend>graph_slam_tools</run_depend>
+  <export>
+    <nodelet plugin="${prefix}/nodelet_plugins.xml"/>
+    <cpp cflags="-I${prefix}/include"/>
+  </export>
+</package>
