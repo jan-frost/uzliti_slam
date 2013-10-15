@@ -1,0 +1,21 @@
+<package>
+  <name>graph_slam_msgs</name>
+  <version>0.1.0</version>
+  <description>
+    A collection of ROS messages related to graph-based SLAM.
+  </description>
+
+  <maintainer email="frost@iti.uni-luebeck.de">Jan Frost</maintainer>
+  <license>BSD</license>
+  <url type="website">http://ros.org/wiki/graph_slam_msgs</url>
+  <author>Jan Frost</author>
+  <author>Helge Klüssendorff</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+</package>

@@ -1,0 +1,28 @@
+<package>
+  <name>graph_slam</name>
+  <version>0.1.0</version>
+  <description>
+    A graph-based SLAM algorithm.
+  </description>
+
+  <maintainer email="frost@iti.uni-luebeck.de">Jan Frost</maintainer>
+  <license>BSD</license>
+  <url type="website">http://ros.org/wiki/graph_slam</url>
+  <author>Jan Frost</author>
+  <author>Helge Klüssendorff</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roslib</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>graph_slam_tools</build_depend>
+  <build_depend>cmake_modules</build_depend>
+
+  <run_depend>roslib</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>visualization_msgs</run_depend>
+  <run_depend>nav_msgs</run_depend>
+  <run_depend>graph_slam_tools</run_depend>
+</package>

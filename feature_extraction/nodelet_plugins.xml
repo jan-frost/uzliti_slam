@@ -1,0 +1,7 @@
+<library path="lib/libfeature_extraction_service">
+  <class name="feature_extraction/FeatureExtractionServiceNode" type="feature_extraction::FeatureExtractionServiceNode" base_class_type="nodelet::Nodelet">
+  <description>
+  Feature extraction nodelet.
+  </description>
+  </class>
+</library>
