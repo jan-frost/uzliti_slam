@@ -122,7 +122,6 @@ private:
     Eigen::Isometry3d last_odometry_pose_;               /**< Pose of the last node in the odometry frame. */
     Eigen::Isometry3d current_odometry_pose_;            /**< Current pose in the odometry frame. */
     tf::StampedTransform odom_transform_;             /**< Holds the transform between the map and the odom frame for the transform publisher. */
-    Eigen::MatrixXd odom_covariance_;
 
     std::mutex graph_mutex_;
 

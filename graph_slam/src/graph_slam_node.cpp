@@ -29,39 +29,8 @@
 #include <chrono>
 #include <geometry_msgs/PolygonStamped.h>
 #include <graph_slam_tools/conversions.h>
-#include <graph_slam_tools/optimization/sensor_transform_optimizer.h>
 #include <graph_slam_msgs/SensorRequest.h>
 #include <graph_slam_msgs/NodePair.h>
-
-#include <g2o/types/sclam2d/odometry_measurement.h>
-
-//! Please note: we cannot include this any earlier, because flann seems to have an ambiguity issue towards g2o.
-#include <graph_slam_tools/transformation/cloud_transformation_estimator.h>
-#include <graph_slam_tools/transformation/laser_transformation_estimator.h>
-
-namespace mr=mongo_ros;
-
-typedef mr::MessageWithMetadata<graph_slam_msgs::Node> NodeWithMetadata;
-typedef NodeWithMetadata::ConstPtr NodeMetaPtr;
-typedef mr::MessageWithMetadata<graph_slam_msgs::Edge> EdgeWithMetadata;
-typedef EdgeWithMetadata::ConstPtr EdgeMetaPtr;
-typedef mr::MessageWithMetadata<graph_slam_msgs::SensorTransform> SensorWithMetadata;
-typedef SensorWithMetadata::ConstPtr SensorMetaPtr;
-
-mr::Metadata makeMetadata(const graph_slam_msgs::Node& n)
-{
-    return mr::Metadata("id", n.id, "x", n.pose.position.x, "y", n.pose.position.y, "z", n.pose.position.z);
-}
-
-mr::Metadata makeMetadata(const graph_slam_msgs::Edge& e)
-{
-    return mr::Metadata("id", e.id, "id_from", e.id_from, "id_to", e.id_to);
-}
-
-mr::Metadata makeMetadata(const graph_slam_msgs::SensorTransform& s)
-{
-    return mr::Metadata("sensor_name", s.sensor_name);
-}
 
 using std::chrono::duration_cast;
 using std::chrono::milliseconds;
@@ -72,10 +41,8 @@ GraphSlamNode::GraphSlamNode(ros::NodeHandle nh) :
     graph("/map"),
     place_recognizer_(new BinaryGistRecognizer()),
     optimizer_(new G2oOptimizer()),
-    sensor_optimizer_(new SensorTransformOptimizer()),
     transformation_estimator_(new FeatureTransformationEstimator(boost::bind(&GraphSlamNode::newEdgeCallback, this, _1))),
     projector_(new OccupancyGridProjector(nh)),
-    fusion_projector_(new FastFusionProjector(nh)),
     tfl(ros::Duration(10.0))
 {
     // Read odometry frames.
@@ -89,36 +56,24 @@ GraphSlamNode::GraphSlamNode(ros::NodeHandle nh) :
     most_recent_loop_closure_ = "";
     current_odometry_pose_ = Eigen::Isometry3d::Identity();
     last_odometry_pose_ = Eigen::Isometry3d::Identity();
-    odom_covariance_ = Eigen::MatrixXd::Zero(6,6);
     odom_information_ = Eigen::MatrixXd::Zero(6,6);
     map_transform_ = Eigen::Isometry3d::Identity();
     odom_transform_.frame_id_ = "/map";
+    odom_transform_.child_frame_id_ = odom_frame_;
 
     // Initialize publishers
     pose_pub_ = _nh.advertise<geometry_msgs::PoseStamped>("graph_pose", 1);
     graph_display_pub_ = _nh.advertise<graph_slam_msgs::Graph>("/display_graph", 1);
     sensor_request_pub_ = _nh.advertise<graph_slam_msgs::SensorRequest>("/sensor_request", 1);
-    surfelPolyPub = _nh.advertise<geometry_msgs::PolygonStamped>("poly_surfel_first",1);
-    surfelPolyPub2 = _nh.advertise<geometry_msgs::PolygonStamped>("poly_surfel_second",1);
 
     // Initialize synchronized sensor data subscriber.
     sensor_sub_.subscribe(nh, "/sensor_data", 10);
-    sensor_sub_filter_ = new tf::MessageFilter<graph_slam_msgs::SensorDataArray>(sensor_sub_, tfl, "/odom", 10);
+    sensor_sub_filter_ = new tf::MessageFilter<graph_slam_msgs::SensorDataArray>(sensor_sub_, tfl, odom_frame_, 10);
     sensor_sub_filter_->registerCallback(boost::bind(&GraphSlamNode::sensorDataCallback, this, _1));
-
-    // Initialize synchronized odometry subscriber.
-    odom_sub_.subscribe(nh, "/odom", 10);
-    odom_sub_filter_ = new tf::MessageFilter<nav_msgs::Odometry>(odom_sub_, tfl, "/base_link", 10);
-    odom_sub_filter_->registerCallback(boost::bind(&GraphSlamNode::odomCallback, this, _1));
-
-    // Start display and optimization thread.
-//    graph_thread_ = std::thread(&GraphSlamNode::processThread, this);
 
     // Initialize timer callbacks.
     odom_timer_ = nh.createTimer(ros::Duration(.1), &GraphSlamNode::odomTimerCallback, this);
     optimization_timer_ = nh.createTimer(ros::Duration(5.), &GraphSlamNode::optimizationTimerCallback, this);
-
-    conn_ = mr::makeDbConnection(nh, "localhost", 27019, 60.0);
 
     graph.addSensor("/base_link", Eigen::Isometry3d::Identity());
 }
@@ -138,11 +93,6 @@ void GraphSlamNode::odomTimerCallback(const ros::TimerEvent& e)
     Eigen::AngleAxisd diffAngleAxis(current_odometry_pose_.linear().transpose() * last_odometry_pose_.linear());
     double diffRotation = fabs(diffAngleAxis.angle()) * 180 / M_PI;
 
-    // Update covariance matrix. Choose the maximum covariance.
-    if (current_odom_covariance.diagonal().prod() > odom_covariance_.diagonal().prod()) {
-        odom_covariance_ = current_odom_covariance;
-    }
-
     // Add a new node if we have moved too much.
     if (diffTranslation >= config_.new_node_distance_T || diffRotation >= config_.new_node_distance_R) {
         ROS_DEBUG("request sensor data");
@@ -161,7 +111,6 @@ void GraphSlamNode::odomTimerCallback(const ros::TimerEvent& e)
 
     // Publish the global pose separately.
     geometry_msgs::PoseStamped currentPose;
-    currentPose.header = odom->header;
     currentPose.header.frame_id = "/map";
     currentPose.header.stamp = current_time;
     Eigen::Isometry3d tempPose = map_transform_ * current_odometry_pose_;
@@ -259,19 +208,7 @@ bool GraphSlamNode::mapRequestCallback(graph_slam_msgs::MapRequestService::Reque
         graph_mutex_.lock();
         projector_->project(graph);
         graph_mutex_.unlock();
-    } else {
-        graph_mutex_.lock();
-        fusion_projector_->project(graph);
-        graph_mutex_.unlock();
     }
-    return true;
-}
-
-bool GraphSlamNode::calibrateRequestCallback(graph_slam_msgs::EmptyService::Request &req, graph_slam_msgs::EmptyService::Response &res)
-{
-    graph_mutex_.lock();
-    sensor_optimizer_->optimize(graph, boost::bind(&GraphSlamNode::finishedSensorOptimization, this));
-    graph_mutex_.unlock();
     return true;
 }
 
@@ -279,22 +216,6 @@ bool GraphSlamNode::clearCallback(graph_slam_msgs::EmptyService::Request &req, g
 {
     graph_mutex_.lock();
     clear();
-    graph_mutex_.unlock();
-    return true;
-}
-
-bool GraphSlamNode::loadCallback(graph_slam_msgs::EmptyService::Request &req, graph_slam_msgs::EmptyService::Response &res)
-{
-    graph_mutex_.lock();
-    load();
-    graph_mutex_.unlock();
-    return true;
-}
-
-bool GraphSlamNode::storeCallback(graph_slam_msgs::EmptyService::Request &req, graph_slam_msgs::EmptyService::Response &res)
-{
-    graph_mutex_.lock();
-    store();
     graph_mutex_.unlock();
     return true;
 }
@@ -341,81 +262,6 @@ void GraphSlamNode::graphSlamConfigCallback(graph_slam::GraphSlamConfig &config,
     graph_mutex_.unlock();
 }
 
-void GraphSlamNode::store()
-{
-    mr::dropDatabase("graph_slam", "localhost", 27019, 60.0);
-
-    // Add nodes that are new.
-    mr::MessageCollection<graph_slam_msgs::Node> nodes_collection("graph_slam", "nodes", "localhost", 27019, 60.0);
-    for (auto node_it = graph.nodeIterator(); node_it.first != node_it.second; ++node_it.first) {
-        graph_slam_msgs::Node node_msg = Conversions::toMsg(node_it.first->second, true);
-        nodes_collection.insert(node_msg, makeMetadata(node_msg));
-    }
-
-    // Add edges that are new.
-    mr::MessageCollection<graph_slam_msgs::Edge> edges_collection("graph_slam", "edges", "localhost", 27019, 60.0);
-    for (auto edge_it = graph.edgeIterator(); edge_it.first != edge_it.second; ++edge_it.first) {
-        graph_slam_msgs::Edge edge_msg = Conversions::toMsg(edge_it.first->second);
-        edges_collection.insert(edge_msg, makeMetadata(edge_msg));
-    }
-
-    // Add new sensor transformations.
-    mr::MessageCollection<graph_slam_msgs::SensorTransform> sensors_collection("graph_slam", "sensors", "localhost", 27019, 60.0);
-    for (auto sensor_it = graph.sensorIterator(); sensor_it.first != sensor_it.second; ++sensor_it.first) {
-        graph_slam_msgs::SensorTransform sensor_tranform_msg;
-        sensor_tranform_msg.sensor_name = sensor_it.first->first;
-        sensor_tranform_msg.transform = Conversions::toMsg(sensor_it.first->second);
-        sensors_collection.insert(sensor_tranform_msg, makeMetadata(sensor_tranform_msg));
-    }
-}
-
-void GraphSlamNode::load()
-{
-    clear();
-    mongo::Query query;
-
-    // Get all stored nodes.
-    mr::MessageCollection<graph_slam_msgs::Node> nodes_collection("graph_slam", "nodes", "localhost", 27019, 60.0);
-    std::vector<NodeMetaPtr> stored_nodes = nodes_collection.pullAllResults(query);
-    for (auto node_msg_with_meta : stored_nodes) {
-        graph_slam_msgs::Node node_msg = *node_msg_with_meta;
-        ROS_INFO("add node %s", node_msg.id.c_str());
-        graph.addNode(Conversions::fromMsg(node_msg));
-        place_recognizer_->addPlace(graph.node(node_msg.id));
-    }
-    graph.mostRecentNode() = "";
-
-    // Get all stored edges.
-    mr::MessageCollection<graph_slam_msgs::Edge> edges_collection("graph_slam", "edges", "localhost", 27019, 60.0);
-    std::vector<EdgeMetaPtr> stored_edges = edges_collection.pullAllResults(query);
-    for (auto edge_msg_with_meta : stored_edges) {
-        graph_slam_msgs::Edge edge_msg = *edge_msg_with_meta;
-        ROS_INFO("add edge %s", edge_msg.id.c_str());
-        graph.addEdge(Conversions::fromMsg(edge_msg));
-    }
-
-    // Get all stored sensor transforms.
-    mr::MessageCollection<graph_slam_msgs::SensorTransform> sensors_collection("graph_slam", "sensors", "localhost", 27019, 60.0);
-    std::vector<SensorMetaPtr> stored_sensors = sensors_collection.pullAllResults(query);
-    for (auto sensor_msg_with_meta : stored_sensors) {
-        graph_slam_msgs::SensorTransform sensor_msg = *sensor_msg_with_meta;
-        ROS_INFO("add sensor %s", sensor_msg.sensor_name.c_str());
-        graph.addSensor(sensor_msg.sensor_name, Conversions::fromMsg(sensor_msg.transform));
-    }
-}
-
-void GraphSlamNode::graphSlamConfigCallback(graph_slam::GraphSlamConfig &config, uint32_t level)
-{
-    config_ = config;
-    if (config.use_cloud_registration) {
-        cloud_transformation_estimator_ = boost::shared_ptr<TransformationEstimator>(new LaserTransformationEstimator(boost::bind(&GraphSlamNode::newCloudEdgeCallback, this, _1))),
-        cloud_registration_timer_ = _nh.createTimer(ros::Duration(0.2), &GraphSlamNode::cloudRegistrationTimerCallback, this);
-    }
-    if (config.use_parameter_optimization) {
-        parameter_optimization_timer_ = _nh.createTimer(ros::Duration(10.), &GraphSlamNode::parameterOptimizationTimerCallback, this);
-    }
-}
-
 void GraphSlamNode::linkEstimationConfigCallback(graph_slam_tools::FeatureLinkEstimationConfig &config, uint32_t level)
 {
     transformation_estimator_->setConfig(config);
@@ -446,88 +292,6 @@ void GraphSlamNode::optimizationTimerCallback(const ros::TimerEvent& e)
         }
         graph_mutex_.unlock();
     }
-}
-
-void GraphSlamNode::cloudRegistrationTimerCallback(const ros::TimerEvent& e)
-{
-    if (graph.size() > 1) {
-        graph_mutex_.lock();
-        boost::shared_ptr<LaserTransformationEstimator> c = boost::dynamic_pointer_cast<LaserTransformationEstimator>(cloud_transformation_estimator_);
-        for (auto sensor_it = graph.sensorIterator(); sensor_it.first != sensor_it.second; ++sensor_it.first) {
-            c->sensor_transforms_[sensor_it.first->first] = sensor_it.first->second;
-        }
-
-        // Choose random node.
-        int random_node = rand() % graph.size();
-        auto it = graph.nodeIterator();
-        std::advance(it.first, random_node);
-        if (it.first->first > most_recent_loop_closure_) {
-            graph_mutex_.unlock();
-            return;
-        }
-        SlamNode &node1 = it.first->second;
-        std::vector<polygon> p1;
-        LaserscanDataPtr laser_data_from;
-        for (auto sensor_data : node1.sensor_data_) {
-            if (sensor_data->type_ == graph_slam_msgs::SensorData::SENSOR_TYPE_LASERSCAN) {
-                laser_data_from = boost::dynamic_pointer_cast<LaserscanData>(sensor_data);
-                p1 = toPolygon(laser_data_from->scan_, node1.pose_);
-                break;
-            }
-        }
-
-        // Access nodes in random order.
-        std::vector<std::string> ids = graph.nodeIds();
-        std::random_shuffle(ids.begin(), ids.end());
-        graph_mutex_.unlock();
-
-        bool found = false;
-        for (auto node_id : ids) {
-            graph_mutex_.lock();
-            if (node_id <= most_recent_loop_closure_ && graph.existsNode(node_id)) {
-                // Only try if there is no link between those nodes.
-                if (node1.id_ != node_id && node1.edges_.find(node_id) == node1.edges_.end()) {
-                    SlamNode &node2 = graph.node(node_id);
-                    if (fabs((node1.stamp_ - node2.stamp_).toSec()) >= config_.new_edge_time &&
-                            (node1.pose_.inverse() * node2.pose_).translation().norm() < 10.) {
-                        for (auto sensor_data : node2.sensor_data_) {
-                            if (sensor_data->type_ == graph_slam_msgs::SensorData::SENSOR_TYPE_LASERSCAN) {
-                                LaserscanDataPtr laser_data_to = boost::dynamic_pointer_cast<LaserscanData>(sensor_data);
-                                if (checkViewCompatibility(laser_data_from->scan_, laser_data_to->scan_)) {
-                                    std::vector<polygon> p2 = toPolygon(laser_data_to->scan_, node2.pose_);
-                                    double area = intersectionArea(p1, p2);
-
-                                    if (area > 3.) {
-                                        displayPolygon(p1, surfelPolyPub);
-                                        displayPolygon(p2, surfelPolyPub2);
-
-                                        cloud_transformation_estimator_->estimateEdge(node1, node2);
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        if (found) {
-                            graph_mutex_.unlock();
-                            break;
-                        }
-                    }
-                }
-            }
-            graph_mutex_.unlock();
-        }
-    }
-}
-
-void GraphSlamNode::parameterOptimizationTimerCallback(const ros::TimerEvent& e)
-{
-    graph_mutex_.lock();
-    if (graph.size() > 1) {
-        sensor_optimizer_->optimize(graph, boost::bind(&GraphSlamNode::finishedSensorOptimization, this));
-    }
-    graph_mutex_.unlock();
 }
 
 void GraphSlamNode::clear()
@@ -561,100 +325,14 @@ void GraphSlamNode::finishedGraphOptimization()
     graph_mutex_.unlock();
 }
 
-void GraphSlamNode::finishedSensorOptimization()
-{
-    ROS_DEBUG("sensor optimization finished");
-    graph_mutex_.lock();
-    sensor_optimizer_->storeOptimizationResults(graph);
-    graph_mutex_.unlock();
-}
-
-std::vector<polygon> GraphSlamNode::toPolygon(sensor_msgs::LaserScan &scan, const Eigen::Affine3d &pose)
-{
-    std::vector<polygon> res;
-    float deg = scan.angle_min;
-    std::deque<point_xy> points;
-    for (auto r : scan.ranges) {
-        if (!isnan(r) && r < scan.range_max) {
-            double d_far = r + 0.5;
-            Eigen::Vector3d point_far = pose * Eigen::Vector3d(cos(deg) * d_far, sin(deg) * d_far, 0).homogeneous();
-            double d_near = r - 0.5;
-            Eigen::Vector3d point_near = pose * Eigen::Vector3d(cos(deg) * d_near, sin(deg) * d_near, 0).homogeneous();
-
-            points.push_front(point_xy(point_far(0), point_far(1)));
-            points.push_back(point_xy(point_near(0), point_near(1)));
-        } else {
-            if (points.size() > 4) {
-                points.push_back(points.front());
-                polygon p;
-                boost::geometry::assign_points(p, points);
-                boost::geometry::correct(p);
-                res.push_back(p);
-                points.clear();
-            }
-        }
-        deg +=scan.angle_increment;
-    }
-    if (points.size() > 4) {
-        points.push_back(points.front());
-        polygon p;
-        boost::geometry::assign_points(p, points);
-        boost::geometry::correct(p);
-        res.push_back(p);
-    }
-
-    return res;
-}
-
-bool GraphSlamNode::checkViewCompatibility(sensor_msgs::LaserScan &a, sensor_msgs::LaserScan &b) {
-    return true;
-}
-
-double GraphSlamNode::intersectionArea(std::vector<polygon> &a, std::vector<polygon> &b)
-{
-    double res = 0.;
-    std::deque<polygon> output;
-    for (auto pa : a) {
-        for (auto pb : b) {
-            boost::geometry::intersection(pa, pb, output);
-
-            BOOST_FOREACH(polygon const& p, output) {
-                res += boost::geometry::area(p);
-            }
-        }
-    }
-    return res;
-}
-
-
-void GraphSlamNode::displayPolygon(std::vector<polygon> &a, ros::Publisher &pub)
-{
-    geometry_msgs::PolygonStamped poly;
-    poly.header.frame_id = "/map";
-    poly.header.stamp = ros::Time();
-    for (auto p1 : a) {
-        for(size_t i = 0; i < p1.outer().size(); i++){
-            geometry_msgs::Point32 point;
-            point.x = p1.outer().at(i).x();
-            point.y = p1.outer().at(i).y();
-            point.z = 0;
-            poly.polygon.points.push_back(point);
-        }
-    }
-    pub.publish(poly);
-}
-
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "graph_slam_node");
-    ros::NodeHandle nh;
+    ros::NodeHandle nh("~");
     GraphSlamNode graph_slam(nh);
 
     ros::ServiceServer map_request_serv = nh.advertiseService<graph_slam_msgs::MapRequestService::Request, graph_slam_msgs::MapRequestService::Response>("map_request", boost::bind(&GraphSlamNode::mapRequestCallback, &graph_slam, _1, _2));
     ros::ServiceServer clear_serv = nh.advertiseService<graph_slam_msgs::EmptyService::Request, graph_slam_msgs::EmptyService::Response>("clear", boost::bind(&GraphSlamNode::clearCallback, &graph_slam, _1, _2));
-    ros::ServiceServer calibrate_serv = nh.advertiseService<graph_slam_msgs::EmptyService::Request, graph_slam_msgs::EmptyService::Response>("calibrate_request", boost::bind(&GraphSlamNode::calibrateRequestCallback, &graph_slam, _1, _2));
-    ros::ServiceServer load_serv = nh.advertiseService<graph_slam_msgs::EmptyService::Request, graph_slam_msgs::EmptyService::Response>("load", boost::bind(&GraphSlamNode::loadCallback, &graph_slam, _1, _2));
-    ros::ServiceServer store_serv = nh.advertiseService<graph_slam_msgs::EmptyService::Request, graph_slam_msgs::EmptyService::Response>("store", boost::bind(&GraphSlamNode::storeCallback, &graph_slam, _1, _2));
 
     dynamic_reconfigure::Server<graph_slam_tools::FeatureLinkEstimationConfig> server_le(ros::NodeHandle("~/feature_link_estimation"));
     dynamic_reconfigure::Server<graph_slam_tools::FeatureLinkEstimationConfig>::CallbackType f_le;

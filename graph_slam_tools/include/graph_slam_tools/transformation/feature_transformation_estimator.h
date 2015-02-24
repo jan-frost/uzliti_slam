@@ -32,7 +32,6 @@
 #include <eigen3/Eigen/Dense>
 #include <boost/function.hpp>
 #include <image_geometry/pinhole_camera_model.h>
-#include <graph_slam_tools/epnp.h>
 #include <graph_slam_tools/FeatureLinkEstimationConfig.h>
 
 typedef boost::function<void(Eigen::MatrixXd, Eigen::MatrixXd, Eigen::Isometry3d&)> PoseEstimationFunction;
@@ -51,10 +50,7 @@ protected:
     bool estimateEdgeImpl(SlamNode &from, SlamNode &to, SlamEdge &edge);
 
     void initCameraModel(sensor_msgs::CameraInfo info);
-    int estimateEPNP(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d &T, double maxError, int iterations, double breakPercentage);
     int estimateSVD(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d &T, double maxError, int iterations, double breakPercentage);
-    void estimatePoseEPNP(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d &T);
-    void estimatePoseEPNP2D(Eigen::MatrixXd P, Eigen::MatrixXd q, Eigen::Isometry3d &T);
 
     int prosac(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d &T, double maxError, int iterations, double breakPercentage, int minCorrespondenceCount, PoseEstimationFunction pose, ConsensusFunction consensus);
     
@@ -62,7 +58,6 @@ protected:
     int consensusReprojection(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d T, double thresh, Eigen::Array<bool,1,Eigen::Dynamic> &consensusSet);
     int consensus3D(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d T, double thresh, Eigen::Array<bool,1,Eigen::Dynamic> &consensusSet);
 
-    epnp pnp;
     image_geometry::PinholeCameraModel camera_;
     graph_slam_tools::FeatureLinkEstimationConfig config_;
 };

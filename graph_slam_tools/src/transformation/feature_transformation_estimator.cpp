@@ -34,8 +34,6 @@
 FeatureTransformationEstimator::FeatureTransformationEstimator(boost::function<void (SlamEdge)> callback) :
     TransformationEstimator(callback)
 {
-    pnp.set_internal_parameters(239.5, 319.5, 525.0, 525.0);
-    pnp.set_maximum_number_of_correspondences(1000);
 }
 
 bool FeatureTransformationEstimator::estimateEdgeImpl(SlamNode &from, SlamNode &to, SlamEdge &edge)
@@ -49,7 +47,6 @@ bool FeatureTransformationEstimator::estimateEdgeImpl(SlamNode &from, SlamNode &
     std::pair<FeatureDataPtr,FeatureDataPtr> best_match;
     std::vector<cv::DMatch> potentialNeighborMatches;
     cv::BFMatcher binaryMatcher(cv::NORM_HAMMING);
-    cv::BFMatcher floatMatcher(cv::NORM_L2);
 
     for (auto data_from : sensor_data_from) {
         if (data_from->type_ == graph_slam_msgs::SensorData::SENSOR_TYPE_FEATURE) {
@@ -104,12 +101,7 @@ bool FeatureTransformationEstimator::estimateEdgeImpl(SlamNode &from, SlamNode &
 
         // Estimate pose with either SVD or EPnP.
         Eigen::Isometry3d T = Eigen::Isometry3d::Identity();
-        int consensus = 0;
-        if (config_.use_epnp) {
-            consensus = estimateEPNP(Pd, Xd, T, config_.ransac_threshold, config_.ransac_iteration, config_.ransac_break_percentage);
-        } else {
-            consensus = estimateSVD(Pd, Xd, T, config_.ransac_threshold, config_.ransac_iteration, config_.ransac_break_percentage);
-        }
+        int consensus = estimateSVD(Pd, Xd, T, config_.ransac_threshold, config_.ransac_iteration, config_.ransac_break_percentage);
         ROS_DEBUG("CONSENSUS: %d", consensus);
 
         Eigen::MatrixXd link_covariance = Eigen::MatrixXd::Zero(6,6);
@@ -138,14 +130,6 @@ bool FeatureTransformationEstimator::estimateEdgeImpl(SlamNode &from, SlamNode &
 void FeatureTransformationEstimator::initCameraModel(sensor_msgs::CameraInfo info)
 {
     this->camera_.fromCameraInfo(info);
-    pnp.set_internal_parameters(camera_.cy(), camera_.cx(), camera_.fy(), camera_.fx());
-}
-
-int FeatureTransformationEstimator::estimateEPNP(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d &T, double maxError, int iterations, double breakPercentage)
-{
-    return prosac(P, Q, T, maxError, iterations, breakPercentage, 7,
-                  boost::bind(&FeatureTransformationEstimator::estimatePoseEPNP, this, _1, _2, _3),
-                  boost::bind(&FeatureTransformationEstimator::consensusReprojection, this, _1, _2, _3, maxError, _4));
 }
 
 int FeatureTransformationEstimator::estimateSVD(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d &T, double maxError, int iterations, double breakPercentage)
@@ -190,7 +174,6 @@ int FeatureTransformationEstimator::prosac(Eigen::MatrixXd P, Eigen::MatrixXd Q,
         // Check if this is the new maximum consensus set.
         if (consensus > maxConsensus) {
             maxConsensus = consensus;
-//            std::cout << maxConsensus << std::endl;
             maxConsensusSet = consensusSet;
             T = Ttemp;
 
@@ -232,32 +215,6 @@ int FeatureTransformationEstimator::prosac(Eigen::MatrixXd P, Eigen::MatrixXd Q,
     return maxConsensus;
 }
 
-void FeatureTransformationEstimator::estimatePoseEPNP(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d &T)
-{
-    Eigen::MatrixXd q = Eigen::MatrixXd::Zero(2, Q.cols());
-    for (int i = 0; i < q.cols(); i++) {
-        q(0,i) = pnp.uc + pnp.fu * Q(0, i) / Q(2, i);
-        q(1,i) = pnp.vc + pnp.fv * Q(1, i) / Q(2, i);
-    }
-
-    pnp.reset_correspondences();
-    for (int j = 0; j < P.cols(); j++) {
-        pnp.add_correspondence(P(0,j), P(1,j), P(2,j), q(0,j), q(1,j));
-    }
-
-    pnp.compute_pose(T);
-}
-
-void FeatureTransformationEstimator::estimatePoseEPNP2D(Eigen::MatrixXd P, Eigen::MatrixXd q, Eigen::Isometry3d &T)
-{
-    pnp.reset_correspondences();
-    for (int j = 0; j < P.cols(); j++) {
-        pnp.add_correspondence(P(0,j), P(1,j), P(2,j), q(0,j), q(1,j));
-    }
-
-    pnp.compute_pose(T);
-}
-
 void FeatureTransformationEstimator::estimatePoseSVD(Eigen::MatrixXd P, Eigen::MatrixXd Q, Eigen::Isometry3d &T)
 {
     pcl::TransformationFromCorrespondences tfc;
@@ -274,11 +231,11 @@ int FeatureTransformationEstimator::consensusReprojection(Eigen::MatrixXd P, Eig
     Eigen::MatrixXd Qproj(2, P.cols());
     for (int i = 0; i < P.cols(); i++) {
         Eigen::Vector3d PT = T * P.col(i).homogeneous();
-        Pproj(0,i) = pnp.uc + pnp.fu * PT(0) / PT(2);
-        Pproj(1,i) = pnp.vc + pnp.fv * PT(1) / PT(2);
+        Pproj(0,i) = camera_.cx() + camera_.fx() * PT(0) / PT(2);
+        Pproj(1,i) = camera_.cy() + camera_.fy() * PT(1) / PT(2);
 
-        Qproj(0,i) = pnp.uc + pnp.fu * Q(0,i) / Q(2,i);
-        Qproj(1,i) = pnp.vc + pnp.fv * Q(1,i) / Q(2,i);
+        Qproj(0,i) = camera_.cx() + camera_.fx() * Q(0,i) / Q(2,i);
+        Qproj(1,i) = camera_.cy() + camera_.fy() * Q(1,i) / Q(2,i);
     }
 
     int consensus = 0;

@@ -69,7 +69,6 @@ add_library(${PROJECT_NAME}
     src/transformation/feature_transformation_estimator.cpp
 
     thirdparty/src/lsh.cpp
-    thirdparty/src/epnp.cpp
 )
 add_dependencies(${PROJECT_NAME} graph_slam_tools_gencfg)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES}
