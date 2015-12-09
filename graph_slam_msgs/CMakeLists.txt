@@ -15,6 +15,7 @@ add_message_files(FILES
   DepthImage.msg
   Edge.msg
   Graph.msg
+  GraphMeta.msg
   GraphReceived.msg
   Neighbor.msg
   NeighborArray.msg

@@ -1,28 +1,21 @@
 // Copyright (c) 2014, Institute of Computer Engineering (ITI), Universität zu Lübeck
-// Jan Frost, Jan Helge Klüssendorff
+// Jan Frost
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification,
-// are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright notice, this
-//    list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this
-//    list of conditions and the following disclaimer in the documentation and/or
-//    other materials provided with the distribution.
-// 3. Neither the name of the copyright holder nor the names of its contributors may
-//    be used to endorse or promote products derived from this software without
-//    specific prior written permission.
+// This file is part of the uzliti_slam ROS package.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-// IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
+// uzliti_slam is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// uzliti_slam is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with uzliti_slam.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef FEATURE_EXTRACTION_SERVICE_NODE_H
 #define FEATURE_EXTRACTION_SERVICE_NODE_H
@@ -33,7 +26,7 @@
 #include <feature_extraction/FeatureExtractionConfig.h>
 #include <graph_slam_msgs/Features.h>
 #include <graph_slam_msgs/SensorRequest.h>
-#include <graph_slam_tools/projection/graph_grid_mapper.h>
+#include <map_projection/graph_grid_mapper.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -45,10 +38,9 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/Image.h>
+#include <tf/message_filter.h>
 #include <tf/transform_listener.h>
 
-namespace feature_extraction
-{
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::CameraInfo, sensor_msgs::Image, sensor_msgs::CameraInfo> RGBDSyncPolicy;
 
 class RGBDCameraListerner {
@@ -134,8 +126,6 @@ public:
     graph_slam_msgs::Features getMessageStub() {
         graph_slam_msgs::Features features;
         features.header = depth_image_msg_.header;
-//        features.header.stamp.fromSec((depth_image_msg_.header.stamp.toSec() + color_image_msg_.header.stamp.toSec()) / 2);
-//        features.header.stamp.fromSec(std::min(depth_image_msg_.header.stamp.toSec(), color_image_msg_.header.stamp.toSec()));
         features.camera_model = depth_info_msg_;
         return features;
     }
@@ -160,7 +150,6 @@ typedef boost::shared_ptr<RGBDCameraListerner> RGBDCameraListernerPtr;
 class FeatureExtractionServiceNode : public nodelet::Nodelet {
 public:
     FeatureExtractionServiceNode();
-//    virtual ~FeatureExtractionServiceNode();
 
     virtual void onInit();
 
@@ -168,18 +157,20 @@ public:
 
     void configCallback(feature_extraction::FeatureExtractionConfig &config, uint32_t level);
 
-    void occupancyGridConfigCallback(graph_slam_tools::OccupancyGridProjectorConfig &config, uint32_t level);
+    void occupancyGridConfigCallback(map_projection::OccupancyGridProjectorConfig &config, uint32_t level);
 
 private:
-    ros::Subscriber request_subscriber_;
+    message_filters::Subscriber<graph_slam_msgs::SensorRequest> request_sub_;
+    tf::MessageFilter<graph_slam_msgs::SensorRequest> *request_sub_filter_ ;
+
     std::vector<RGBDCameraListernerPtr> rgbd_listeners_;
     ros::Publisher sensor_data_publisher_;
 
     dynamic_reconfigure::Server<feature_extraction::FeatureExtractionConfig> server;
     dynamic_reconfigure::Server<feature_extraction::FeatureExtractionConfig>::CallbackType f;
 
-    dynamic_reconfigure::Server<graph_slam_tools::OccupancyGridProjectorConfig> server_og;
-    dynamic_reconfigure::Server<graph_slam_tools::OccupancyGridProjectorConfig>::CallbackType f_og;
+    dynamic_reconfigure::Server<map_projection::OccupancyGridProjectorConfig> server_og;
+    dynamic_reconfigure::Server<map_projection::OccupancyGridProjectorConfig>::CallbackType f_og;
 
     FeatureExtractionCore extraction_core;
     GraphGridMapper mapper;
@@ -187,7 +178,8 @@ private:
     feature_extraction::FeatureExtractionConfig conf_;
 
     tf::TransformListener tfl; /** @brief to lookup transform between camera_link and base_link */
+    std::string odom_frame_;
+    bool use_feature_mask_;
 };
-}
 
 #endif

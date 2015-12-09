@@ -1,0 +1,25 @@
+<package>
+  <name>graph_optimization</name>
+  <version>0.1.0</version>
+  <description>
+    Classes for graph optimization in the uzliti_slam framework.
+  </description>
+
+  <maintainer email="frost@iti.uni-luebeck.de">Jan Frost</maintainer>
+  <license>GPLv3</license>
+  <author>Jan Frost</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>graph_slam_common</build_depend>
+  <build_depend>transformation_estimation</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+
+  <run_depend>graph_slam_common</run_depend>
+  <run_depend>transformation_estimation</run_depend>
+  <run_depend>dynamic_reconfigure</run_depend>
+
+  <export>
+    <cpp lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lgraph_optimization" cflags="-I${prefix}/include"/>
+  </export>
+</package>

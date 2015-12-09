@@ -1,9 +1,0 @@
-<launch>
-  <arg name="param_file" default="$(find iti_slam_launch)/yaml/iti_dataset.yaml"/>
-
-  <node pkg="simple_graph_slam" type="simple_graph_slam_node" name="simple_graph_slam_node" output="screen">
-    <remap from="odom" to="robot_pose_ekf/odom" />
-  </node>
-  <rosparam file="$(find simple_graph_slam)/yaml/depth_to_scan.yaml" command="load" />
-
-</launch>

@@ -1,0 +1,8 @@
+depth_image_to_laserscan:
+  cams: [camera]
+  depth_scale: 1.0
+  max_height: 1.1
+  min_height: 0.2
+  range_min:  0.0
+  range_max:  6.0
+  resolution:  0.05

@@ -6,7 +6,7 @@
   </description>
 
   <maintainer email="frost@iti.uni-luebeck.de">Jan Frost</maintainer>
-  <license>BSD</license>
+  <license>GPLv3</license>
   <url type="website">http://ros.org/wiki/graph_slam_msgs</url>
   <author>Jan Frost</author>
   <author>Helge Klüssendorff</author>

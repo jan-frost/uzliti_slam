@@ -1,0 +1,19 @@
+feature_extraction_nodelet:
+  cams: [camera]
+  odom_frame: /odom
+
+feature_extraction_manager:
+  depth_scale: 1.0
+  feature_max_depth: 7.
+  use_bilateral_filter: false
+  store_depth_images: false
+  store_color_images: false
+  store_laser_scans: true
+  use_feature_mask: false
+
+feature_extraction_manager/occupancy_grid_estimation:
+  max_height: 1.1
+  min_height: 0.5
+  range_min:  0.5
+  range_max:  6.0
+  resolution:  0.05

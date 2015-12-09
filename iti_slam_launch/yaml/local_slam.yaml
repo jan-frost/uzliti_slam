@@ -1,0 +1,33 @@
+local_scope_slam_node:
+  name: local
+  new_node_distance_T: 0.3
+  new_node_distance_R: 15
+  max_edge_error: 1.0
+  max_edge_distance_T: 1.5
+  max_edge_distance_R: 30
+  min_matching_score: 20
+  new_edge_time: 5
+  use_cloud_registration: true
+  place_recognition_method: lsh
+  odom_frame: /odom
+  near_scan: true
+  min_accept_valid: 150
+  is_sub_graph: true
+  publish_occupancy_grid: false
+  optimize_graph_freq: 1
+
+local_scope_slam_node/feature_link_estimation:
+  ransac_threshold: 0.1
+  ransac_iteration: 100
+  link_covariance: 0.05
+  use_epnp: false
+
+local_scope_slam_node/graph_optimizer:
+  iterations: 20
+  use_odometry_parameters: false
+  optimize_xy_only: true
+
+local_scope_slam_node/place_recognizer:
+  k_nearest_neighbors: 20
+  history: 0
+  T: 1

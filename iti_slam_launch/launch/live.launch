@@ -1,0 +1,42 @@
+<launch>
+  <arg name="clear_database" default="true"/>
+  <arg name="database_path" default="db_temp"/>
+
+  <rosparam file="$(find uzliti_pbot_launch)/yaml/pbot.yaml" command="load" />
+
+  <!-- Start Openni camera. -->
+  <include file="$(find openni2_launch)/launch/openni2.launch" />
+
+  <!-- Laser scan extraction from depth images -->
+  <include file="$(find feature_extraction)/launch/depth_to_laser.launch" />
+
+  <!-- Starts the robot pose EKF, which combined wheel odometry, IMU, and visual odometry, if available. -->
+  <include file="$(find iti_slam_launch)/launch/pose_ekf.launch">
+    <arg name="odom_topic" value="/pbot_aria/pose" />
+  </include>
+
+  <!-- Starts the SLAM algorithm. -->
+  <include file="$(find iti_slam_launch)/launch/slam.launch">
+    <arg name="clear_database" value="$(arg clear_database)" />
+    <arg name="database_path" value="$(arg database_path)" />
+  </include>
+
+  <!-- Robot-specific launch files: starts PeopleBot and move_base. -->
+  <include file="$(find uzliti_pbot_description)/launch/robot_model.launch"/>
+
+  <node name="pbot_aria" type="RosAria" output="screen" pkg="rosaria">
+    <param name="port" value="/dev/ttyUSB_pbotBase" />
+    <remap from="pbot_aria/cmd_vel" to="cmd_vel" />
+  </node>
+
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <rosparam file="$(find teb_local_planner)/cfg/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find teb_local_planner)/cfg/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find teb_local_planner)/cfg/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find teb_local_planner)/cfg/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find teb_local_planner)/cfg/teb_local_planner_params.yaml" command="load" />
+    <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" />
+    <param name="controller_frequency" value="5.0" />
+  </node>
+
+</launch>

@@ -1,0 +1,9 @@
+depth_image_to_laserscan:
+  cams: [camera]
+  odom_frame: /odom_combined
+  depth_scale: 1.00
+  max_height: 1.5
+  min_height: 0.2
+  range_min:  0.0
+  range_max:  8.0
+  resolution:  0.05

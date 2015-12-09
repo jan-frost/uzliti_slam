@@ -6,18 +6,10 @@
   </description>
 
   <maintainer email="frost@iti.uni-luebeck.de">Jan Frost</maintainer>
-  <license>BSD</license>
-  <url type="website">http://ros.org/wiki/iti_slam_launch</url>
-  <author>Jan Frost</author>
-  <author>Helge Klüssendorff</author>
+  <license>GPLv3</license>
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <run_depend>feature_extraction</run_depend>
-  <run_depend>graph_slam</run_depend>
-  <run_depend>graph_slam_msgs</run_depend>
-  <run_depend>graph_slam_tools</run_depend>
-  <run_depend>robot_pose_ekf</run_depend>
   <export>
 
   </export>

@@ -1,44 +1,53 @@
 feature_extraction_nodelet:
   cams: [camera]
+  odom_frame: /odom
+
+feature_extraction_manager:
+  depth_scale: 1.0
+  feature_max_depth: 7.
+  use_bilateral_filter: false
+  store_depth_images: false
+  store_color_images: false
+  store_laser_scans: true
+  use_feature_mask: false
 
 feature_extraction_manager/occupancy_grid_estimation:
   max_height: 1.1
-  min_height: 0.1
-  range_min:  0.0
-  range_max:  5.0
+  min_height: 0.5
+  range_min:  0.5
+  range_max:  6.0
   resolution:  0.05
 
 graph_slam_node:
-  odom_frame: odom
-  odom_childframe: base_footprint
   new_node_distance_T: 0.3
   new_node_distance_R: 5
-  odom_covariance_T: 0.001
-  odom_covariance_R: 1
   max_edge_error: 1.0
-  max_edge_distance_T: 2.0
-  max_edge_distance_R: 45
-  min_matching_score: 0.3
+  max_edge_distance_T: 1.5
+  max_edge_distance_R: 30
+  min_matching_score: 20
   new_edge_time: 5
+  use_cloud_registration: true
+  use_parameter_optimization: false
+  place_recognition_method: lsh
+  odom_frame: /odom
 
 graph_slam_node/feature_link_estimation:
   ransac_threshold: 0.1
-  ransac_iteration: 200
+  ransac_iteration: 100
   link_covariance: 0.05
   use_epnp: false
 
 graph_slam_node/occupancy_grid_estimation:
-  max_height: 1.1
-  min_height: 0.1
-  range_min:  0.0
-  range_max:  5.0
-  resolution:  0.05
   recompute_laserscans: false
+  range_max: 6.0
+  resolution:  0.05
 
 graph_slam_node/place_recognizer:
-  k_nearest_neighbors: 10
-  history: 10
+  k_nearest_neighbors: 20
+  history: 0
+  T: 2
 
 graph_slam_node/graph_optimizer:
   iterations: 20
   use_odometry_parameters: false
+  optimize_xy_only: true

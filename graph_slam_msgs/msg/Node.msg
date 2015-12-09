@@ -1,4 +1,4 @@
-Header header
+time[] stamps
 
 #the unique number of the node
 string id
@@ -12,6 +12,5 @@ graph_slam_msgs/SensorDataArray sensor_data
 string[] edge_ids
 
 bool fixed
-bool is_loop
-bool is_border
-bool is_in_scope
+
+float64 uncertainty

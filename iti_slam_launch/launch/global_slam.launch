@@ -1,0 +1,19 @@
+<launch>
+  <arg name="clear_database" default="true"/>
+  <arg name="database_path" default="db_temp"/>
+
+  <rosparam file="$(find iti_slam_launch)/yaml/global_slam.yaml" command="load" />
+
+  <node pkg="graph_slam" type="graph_slam_node" name="global_scope_slam_node" output="screen">
+    <param name="clear_database" value="$(arg clear_database)"/>
+    <param name="database_path" value="$(arg database_path)"/>
+    <remap from="display_graph" to="global_slam_graph_display" />
+  </node>
+
+  <!-- Visualization of the global slam graph. -->
+  <node pkg="graph_slam_common" type="graph_visualization_node.py" name="global_graph_visualization_node" output="screen">
+    <remap from="display_graph" to="global_slam_graph_display" />
+    <remap from="graph_markers" to="global_graph_markers" />
+  </node>
+
+</launch>

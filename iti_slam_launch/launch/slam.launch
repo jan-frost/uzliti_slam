@@ -1,0 +1,22 @@
+<launch>
+  <arg name="clear_database" default="true"/>
+  <arg name="database_path" default="db_temp"/>
+
+  <rosparam file="$(find iti_slam_launch)/yaml/feature_extraction.yaml" command="load" />
+
+  <!-- A node, which extracts a given type of feature from the Kinect images. -->
+  <include file="$(find feature_extraction)/launch/feature_extraction_service.launch" />
+
+  <include file="$(find iti_slam_launch)/launch/local_slam.launch">
+    <arg name="clear_database" value="$(arg clear_database)" />
+    <arg name="database_path" value="$(arg database_path)" />
+  </include>
+
+  <include file="$(find iti_slam_launch)/launch/global_slam.launch">
+    <arg name="clear_database" value="$(arg clear_database)" />
+    <arg name="database_path" value="$(arg database_path)" />
+  </include>
+
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find iti_slam_launch)/rviz/uzliti_slam.rviz"/>
+
+</launch>

@@ -3,8 +3,17 @@
   <node pkg="nodelet" type="nodelet" name="feature_extraction_manager"  args="manager" output="screen"/>
 
   <node pkg="nodelet" type="nodelet" name="feature_extraction_nodelet" args="load feature_extraction/FeatureExtractionServiceNode feature_extraction_manager" output="screen">
-    <param name="descriptor_type" value="1" /> 
+    <param name="descriptor_type" value="2" /> 
     <param name="number_of_features" value="300" /> 
   </node>
 
 </launch>
+
+<!--
+<launch>
+    <node pkg="feature_extraction" type="feature_extraction_service" name="feature_extraction_nodelet" args="" output="screen">
+    <param name="descriptor_type" value="2" /> 
+    <param name="number_of_features" value="300" /> 
+    </node>
+</launch>
+-->

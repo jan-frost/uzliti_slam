@@ -1,0 +1,16 @@
+<launch>
+  <arg name="clear_database" default="true"/>
+  <arg name="database_path" default="db_temp"/>
+
+  <group>
+    <rosparam file="$(find iti_slam_launch)/yaml/local_slam.yaml" command="load" />
+
+    <node pkg="graph_slam" type="graph_slam_node" name="local_scope_slam_node" output="screen">
+      <param name="clear_database" value="$(arg clear_database)"/>
+      <param name="database_path" value="$(arg database_path)"/>
+    </node>
+
+    <!-- Visualization of the local slam graph. -->
+    <node pkg="graph_slam_common" type="graph_visualization_node.py" name="local_graph_visualization_node" output="screen" />
+  </group>
+</launch>

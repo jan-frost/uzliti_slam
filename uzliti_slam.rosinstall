@@ -1,0 +1,12 @@
+- git:
+    local-name: navigation
+    uri: https://github.com/jhfrost/navigation.git
+    version: jade-devel
+- git:
+    local-name: csm
+    uri: https://github.com/jhfrost/csm.git
+    version: csm_ros
+- git:
+    local-name: occupancy_grid_utils
+    uri: https://github.com/jhfrost/occupancy_grid_utils.git
+    version: indigo-devel

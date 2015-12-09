@@ -1,0 +1,38 @@
+<package>
+  <name>graph_slam_common</name>
+  <version>0.1.0</version>
+  <description>
+    Common tools for graph-based SLAM
+  </description>
+
+  <maintainer email="frost@iti.uni-luebeck.de">Jan Frost</maintainer>
+  <license>GPLv3</license>
+  <url type="website">http://ros.org/wiki/graph_slam_common</url>
+  <author>Jan Frost</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roslib</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>graph_slam_msgs</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>warehouse_ros</build_depend>
+  <build_depend>rosbag</build_depend>
+  <build_depend>pcl_ros</build_depend>
+  <build_depend>pcl_visualization</build_depend>
+  <build_depend>cmake_modules</build_depend>
+
+  <run_depend>roslib</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>graph_slam_msgs</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>warehouse_ros</run_depend>
+  <run_depend>rosbag</run_depend>
+  <run_depend>pcl_ros</run_depend>
+  <run_depend>libpcl-all</run_depend>
+
+  <export>
+    <cpp lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lgraph_slam_common" cflags="-I${prefix}/include"/>
+  </export>
+</package>

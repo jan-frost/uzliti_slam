@@ -20,3 +20,5 @@ graph_slam_msgs/DepthImage depth_image
 float32[] gist_descriptor
 
 sensor_msgs/LaserScan scan
+
+geometry_msgs/Point scan_center

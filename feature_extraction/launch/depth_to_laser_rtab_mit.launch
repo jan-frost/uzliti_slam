@@ -1,0 +1,5 @@
+<launch>
+  <rosparam file="$(find feature_extraction)/yaml/depth_to_laser_rtab_mit.yaml" command="load" />
+
+  <node pkg="feature_extraction" type="depth_image_to_laserscan" name="depth_image_to_laserscan" args="" output="screen" />
+</launch>
