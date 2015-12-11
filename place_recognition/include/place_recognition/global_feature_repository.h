@@ -22,7 +22,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
-#include <graph_slam_msgs/FeatureType.h>
+#include <graph_slam_msgs/Features.h>
 #include <eigen3/Eigen/Dense>
 #include <flann/flann.h>
 #include <unordered_map>

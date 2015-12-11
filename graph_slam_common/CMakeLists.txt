@@ -60,3 +60,4 @@ target_link_libraries(${PROJECT_NAME}
   ${CHOLMOD_LIBRARIES}
   ${G2O_CORE_LIBRARY} ${G2O_STUFF_LIBRARY} ${G2O_SOLVER_COLMOD} ${G2O_SOLVER_CSPARSE} ${G2O_SOLVER_CSPARSE_EXTENSION} ${G2O_TYPES_SLAM3D} ${G2O_TYPES_SCLAM2D}
 )
+add_dependencies(${PROJECT_NAME} graph_slam_msgs_generate_messages_cpp)
